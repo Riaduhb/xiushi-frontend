@@ -1,5 +1,10 @@
-import { addRule, removeRule, updateRule } from '@/services/ant-design-pro/api';
-import { listInterfaceInfoByPageUsingGet } from '@/services/xiushi-backend/interfaceInfoController';
+import UpdateModal from '@/pages/InterfaceInfo/components/UpdateModal';
+import {
+  addInterfaceInfoUsingPost,
+  deleteInterfaceInfoUsingPost,
+  listInterfaceInfoByPageUsingGet,
+  updateInterfaceInfoUsingPost,
+} from '@/services/xiushi-backend/interfaceInfoController';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns, ProDescriptionsItemProps } from '@ant-design/pro-components';
 import {
@@ -15,76 +20,8 @@ import '@umijs/max';
 import { Button, Drawer, message } from 'antd';
 import type { SortOrder } from 'antd/lib/table/interface';
 import React, { useRef, useState } from 'react';
-import type { FormValueType } from './components/UpdateForm';
-import UpdateForm from './components/UpdateForm';
+import CreateModal from './components/CreateModel';
 
-/**
- * @en-US Add node
- * @zh-CN 添加节点
- * @param fields
- */
-const handleAdd = async (fields: API.RuleListItem) => {
-  const hide = message.loading('正在添加');
-  try {
-    await addRule({
-      ...fields,
-    });
-    hide();
-    message.success('Added successfully');
-    return true;
-  } catch (error) {
-    hide();
-    message.error('Adding failed, please try again!');
-    return false;
-  }
-};
-
-/**
- * @en-US Update node
- * @zh-CN 更新节点
- *
- * @param fields
- */
-const handleUpdate = async (fields: FormValueType) => {
-  const hide = message.loading('Configuring');
-  try {
-    await updateRule({
-      name: fields.name,
-      desc: fields.desc,
-      key: fields.key,
-    });
-    hide();
-    message.success('Configuration is successful');
-    return true;
-  } catch (error) {
-    hide();
-    message.error('Configuration failed, please try again!');
-    return false;
-  }
-};
-
-/**
- *  Delete node
- * @zh-CN 删除节点
- *
- * @param selectedRows
- */
-const handleRemove = async (selectedRows: API.RuleListItem[]) => {
-  const hide = message.loading('正在删除');
-  if (!selectedRows) return true;
-  try {
-    await removeRule({
-      key: selectedRows.map((row) => row.key),
-    });
-    hide();
-    message.success('Deleted successfully and will refresh soon');
-    return true;
-  } catch (error) {
-    hide();
-    message.error('Delete failed, please try again');
-    return false;
-  }
-};
 const TableList: React.FC = () => {
   /**
    * @en-US Pop-up window of new window
@@ -98,8 +35,86 @@ const TableList: React.FC = () => {
   const [updateModalOpen, handleUpdateModalOpen] = useState<boolean>(false);
   const [showDetail, setShowDetail] = useState<boolean>(false);
   const actionRef = useRef<ActionType>();
-  const [currentRow, setCurrentRow] = useState<API.RuleListItem>();
+  const [currentRow, setCurrentRow] = useState<API.InterfaceInfo>();
   const [selectedRowsState, setSelectedRows] = useState<API.RuleListItem[]>([]);
+
+  /**
+   * @en-US Add node
+   * @zh-CN 添加节点
+   * @param fields
+   */
+  const handleAdd = async (fields: API.InterfaceInfo) => {
+    const hide = message.loading('正在添加');
+    try {
+      // 把addRule改成addInterfaceInfoUsingPOST
+      await addInterfaceInfoUsingPost({
+        ...fields,
+      });
+      hide();
+      // 如果调用成功会提示'创建成功'
+      message.success('创建成功');
+      handleModalOpen(false);
+      actionRef.current?.reload();
+      return true;
+    } catch (error: any) {
+      hide();
+      // 否则提示'创建失败' + 报错信息
+      message.error('创建失败，' + error.message);
+      return false;
+    }
+  };
+
+  /**
+   * @en-US Update node
+   * @zh-CN 更新节点
+   *
+   * @param fields
+   */
+  const handleUpdate = async (fields: API.InterfaceInfo) => {
+    // 如果没有选中行，则直接返回
+    if(!currentRow){
+      return;
+    }
+    const hide = message.loading('修改中');
+    try {
+      // 调用更新接口，传入当前行的id和更新的字段
+      await updateInterfaceInfoUsingPost({
+        id:currentRow.id,
+        ...fields,
+      });
+      hide();
+      message.success('修改成功');
+      return true;
+    } catch (error: any) {
+      hide();
+      message.error('操作失败' + error.message);
+      return false;
+    }
+  };
+
+  /**
+   *  Delete node
+   * @zh-CN 删除节点
+   *
+   * @param record
+   */
+  const handleRemove = async (record: API.InterfaceInfo) => {
+    const hide = message.loading('正在删除');
+    if (!record) return true;
+    try {
+      await deleteInterfaceInfoUsingPost({
+        id: record.id,
+      });
+      hide();
+      message.success('删除成功');
+      actionRef.current?.reload();
+      return true;
+    } catch (error: any) {
+      hide();
+      message.error('删除失败' + error.message);
+      return false;
+    }
+  };
 
   /**
    * @en-US International configuration
@@ -116,25 +131,16 @@ const TableList: React.FC = () => {
       title: '接口名称',
       //name对应后端的字段名
       dataIndex: 'name',
-      // tip不用管，一个规则
-      // tip: 'The rule name is the unique key',
-
-      // render不用管，它是说渲染类型，默认我们渲染类型就是text
-      // render: (dom, entity) => {
-      //   return (
-      //     <a
-      //       onClick={() => {
-      //         setCurrentRow(entity);
-      //         setShowDetail(true);
-      //       }}
-      //     >
-      //       {dom}
-      //     </a>
-      //   );
-      // },
-
       // 展示文本
       valueType: 'text',
+      formItemProps: {
+        rules: [
+          {
+            required: true,
+            //message:'123'
+          },
+        ],
+      },
     },
     {
       title: '描述',
@@ -183,11 +189,13 @@ const TableList: React.FC = () => {
       title: '创建时间',
       dataIndex: 'createTime',
       valueType: 'dateTime',
+      hideInForm: true,
     },
     {
       title: '更新时间',
       dataIndex: 'updateTime',
       valueType: 'dateTime',
+      hideInForm: true,
     },
     {
       title: '操作',
@@ -201,10 +209,15 @@ const TableList: React.FC = () => {
             setCurrentRow(record);
           }}
         >
-          配置
+          修改
         </a>,
-        <a key="subscribeAlert" href="https://procomponents.ant.design/">
-          订阅警报
+        <a
+          key="config"
+          onClick={() => {
+            handleRemove(record);
+          }}
+        >
+          删除
         </a>,
       ],
     },
@@ -238,8 +251,8 @@ const TableList: React.FC = () => {
           filter: Record<string, (string | number)[] | null>,
         ) => {
           //使用 await 关键字等待 listInterfaceInfoByPageUsingGet 函数的响应。listInterfaceInfoByPageUsingGet 是一个异步函数，用于获取数据。
-          const res = await listInterfaceInfoByPageUsingGet({
-            ...params
+          const res: any = await listInterfaceInfoByPageUsingGet({
+            ...params,
           });
           //if (res?.data): 检查响应对象 res 是否存在 data 属性。
           if (res?.data) {
@@ -247,7 +260,13 @@ const TableList: React.FC = () => {
               //data: res?.data.records || []：从响应数据中提取记录，如果没有记录则返回一个空数组。
               data: res?.data.records || [],
               success: true,
-              total: res.total,
+              total: res?.data.total || 0,
+            };
+          } else {
+            return {
+              data: [],
+              success: false,
+              total: 0,
             };
           }
         }}
@@ -289,6 +308,28 @@ const TableList: React.FC = () => {
           <Button type="primary">批量审批</Button>
         </FooterToolbar>
       )}
+
+      <UpdateModal
+        columns={columns}
+        onSubmit={async (value) => {
+          const success = await handleUpdate(value);
+          if (success) {
+            handleUpdateModalOpen(false);
+            setCurrentRow(undefined);
+            if (actionRef.current) {
+              actionRef.current.reload();
+            }
+          }
+        }}
+        onCancel={() => {
+          handleUpdateModalOpen(false);
+          if (!showDetail) {
+            setCurrentRow(undefined);
+          }
+        }}
+        visible={updateModalOpen}
+        values={currentRow || {}}
+      />
       <ModalForm
         title={'新建规则'}
         width="400px"
@@ -316,27 +357,6 @@ const TableList: React.FC = () => {
         />
         <ProFormTextArea width="md" name="desc" />
       </ModalForm>
-      <UpdateForm
-        onSubmit={async (value) => {
-          const success = await handleUpdate(value);
-          if (success) {
-            handleUpdateModalOpen(false);
-            setCurrentRow(undefined);
-            if (actionRef.current) {
-              actionRef.current.reload();
-            }
-          }
-        }}
-        onCancel={() => {
-          handleUpdateModalOpen(false);
-          if (!showDetail) {
-            setCurrentRow(undefined);
-          }
-        }}
-        updateModalOpen={updateModalOpen}
-        values={currentRow || {}}
-      />
-
       <Drawer
         width={600}
         open={showDetail}
@@ -360,6 +380,20 @@ const TableList: React.FC = () => {
           />
         )}
       </Drawer>
+      {/*创建一个CreateModal组件，用于在点击新增按钮时弹出 */}
+      <CreateModal
+        columns={columns}
+        // 当取消按钮被点击时,设置更新模态框为false以隐藏模态窗口1808855185537335297_0.2010935574473669
+        onCancel={() => {
+          handleModalOpen(false);
+        }}
+        // 当用户点击提交按钮之后，调用handleAdd函数处理提交的数据，去请求后端添加数据(这里的报错不用管,可能里面组件的属性和外层的不一致)
+        onSubmit={(values) => {
+          handleAdd(values);
+        }}
+        // 根据更新窗口的值决定模态窗口是否显示
+        visible={createModalOpen}
+      />
     </PageContainer>
   );
 };
