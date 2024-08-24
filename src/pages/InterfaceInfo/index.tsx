@@ -1,4 +1,3 @@
-import UpdateModal from '@/pages/InterfaceInfo/components/UpdateModal';
 import {
   addInterfaceInfoUsingPost,
   deleteInterfaceInfoUsingPost,
@@ -9,11 +8,8 @@ import { PlusOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns, ProDescriptionsItemProps } from '@ant-design/pro-components';
 import {
   FooterToolbar,
-  ModalForm,
   PageContainer,
   ProDescriptions,
-  ProFormText,
-  ProFormTextArea,
   ProTable,
 } from '@ant-design/pro-components';
 import '@umijs/max';
@@ -21,6 +17,7 @@ import { Button, Drawer, message } from 'antd';
 import type { SortOrder } from 'antd/lib/table/interface';
 import React, { useRef, useState } from 'react';
 import CreateModal from './components/CreateModel';
+import UpdateModal from './components/UpdateModal';
 
 const TableList: React.FC = () => {
   /**
@@ -36,7 +33,9 @@ const TableList: React.FC = () => {
   const [showDetail, setShowDetail] = useState<boolean>(false);
   const actionRef = useRef<ActionType>();
   const [currentRow, setCurrentRow] = useState<API.InterfaceInfo>();
-  const [selectedRowsState, setSelectedRows] = useState<API.RuleListItem[]>([]);
+  const [selectedRowsState, setSelectedRows] = useState<API.InterfaceInfo[]>([]);
+
+
 
   /**
    * @en-US Add node
@@ -72,14 +71,14 @@ const TableList: React.FC = () => {
    */
   const handleUpdate = async (fields: API.InterfaceInfo) => {
     // 如果没有选中行，则直接返回
-    if(!currentRow){
+    if (!currentRow) {
       return;
     }
     const hide = message.loading('修改中');
     try {
       // 调用更新接口，传入当前行的id和更新的字段
       await updateInterfaceInfoUsingPost({
-        id:currentRow.id,
+        id: currentRow.id,
         ...fields,
       });
       hide();
@@ -330,33 +329,6 @@ const TableList: React.FC = () => {
         visible={updateModalOpen}
         values={currentRow || {}}
       />
-      <ModalForm
-        title={'新建规则'}
-        width="400px"
-        open={createModalOpen}
-        onOpenChange={handleModalOpen}
-        onFinish={async (value) => {
-          const success = await handleAdd(value as API.RuleListItem);
-          if (success) {
-            handleModalOpen(false);
-            if (actionRef.current) {
-              actionRef.current.reload();
-            }
-          }
-        }}
-      >
-        <ProFormText
-          rules={[
-            {
-              required: true,
-              message: '规则名称为必填项',
-            },
-          ]}
-          width="md"
-          name="name"
-        />
-        <ProFormTextArea width="md" name="desc" />
-      </ModalForm>
       <Drawer
         width={600}
         open={showDetail}
