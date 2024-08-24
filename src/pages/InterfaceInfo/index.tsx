@@ -35,7 +35,8 @@ const TableList: React.FC = () => {
   const [currentRow, setCurrentRow] = useState<API.InterfaceInfo>();
   const [selectedRowsState, setSelectedRows] = useState<API.InterfaceInfo[]>([]);
 
-
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   /**
    * @en-US Add node
@@ -241,6 +242,15 @@ const TableList: React.FC = () => {
             <PlusOutlined /> 新建
           </Button>,
         ]}
+        pagination={{
+          current: currentPage,
+          pageSize: pageSize,
+          onChange: (page, size) => {
+            setCurrentPage(page);
+            setPageSize(size);
+            actionRef.current?.reload();
+          },
+        }}
         request={async (
           //params: 传递给 listInterfaceInfoByPageUsingGet 函数的参数。这些参数可能包含分页信息、查询条件等。
           params,
@@ -252,22 +262,23 @@ const TableList: React.FC = () => {
           //使用 await 关键字等待 listInterfaceInfoByPageUsingGet 函数的响应。listInterfaceInfoByPageUsingGet 是一个异步函数，用于获取数据。
           const res: any = await listInterfaceInfoByPageUsingGet({
             ...params,
+            page: currentPage,
+            pageSize: pageSize,
           });
           //if (res?.data): 检查响应对象 res 是否存在 data 属性。
-          if (res?.data) {
-            return {
-              //data: res?.data.records || []：从响应数据中提取记录，如果没有记录则返回一个空数组。
-              data: res?.data.records || [],
-              success: true,
-              total: res?.data.total || 0,
-            };
-          } else {
+          if (res?.data && res.data.records.length === 0 && currentPage > 1) {
+            setCurrentPage(currentPage - 1);
             return {
               data: [],
-              success: false,
+              success: true,
               total: 0,
             };
           }
+          return {
+            data: res?.data.records || [],
+            success: true,
+            total: res?.data.total || 0,
+          };
         }}
         columns={columns}
         rowSelection={{
