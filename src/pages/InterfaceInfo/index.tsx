@@ -1,8 +1,11 @@
-import { getInterfaceInfoByIdUsingGet } from '@/services/xiushi-backend/interfaceInfoController';
-import { PageContainer } from '@ant-design/pro-components';
-import { Button, Card, Descriptions, Form, Input, message } from 'antd';
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router';
+import {
+  getInterfaceInfoByIdUsingGet,
+  invokeInterfaceInfoUsingPost
+} from '@/services/xiushi-backend/interfaceInfoController';
+import {PageContainer} from '@ant-design/pro-components';
+import {Button, Card, Descriptions, Divider, Form, Input, message} from 'antd';
+import React, {useEffect, useState} from 'react';
+import {useParams} from 'react-router';
 
 /**
  * 主页
@@ -12,6 +15,8 @@ const Index: React.FC = () => {
   // 定义状态和钩子函数
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<API.InterfaceInfo>();
+  const [invokeRes,setInvokeRes] = useState<any>();
+  const [invokeLoading,setInvokeLoading] = useState(false);
   // 使用 useParams 钩子函数获取动态路由参数
   const params = useParams();
 
@@ -41,8 +46,26 @@ const Index: React.FC = () => {
     loadData();
   }, []);
 
-  const onFinish = (values: any) => {
-    console.log('Success:', values);
+  const onFinish = async (values: any) => {
+    if (!params.id) {
+      message.error('接口不存在');
+      return;
+    }
+    //在开始调用接口之前，将 invokeLoading 设置为 true，表示正在加载中
+    setInvokeLoading(true);
+    try {
+      const res = await invokeInterfaceInfoUsingPost({
+        id: params.id,
+        ...values,
+      });
+      // 将接口调用的结果(res.data)更新到 invokeRes 状态变量中
+      setInvokeRes(res.data);
+      message.success('请求成功');
+    } catch (error: any) {
+      message.error('操作失败，' + error.message);
+    }
+    // 无论成功或失败，最后将 invokeLoading 设置为 false，表示加载完成
+    setInvokeLoading(false);
   };
 
   return (
@@ -64,7 +87,8 @@ const Index: React.FC = () => {
           <>接口不存在</>
         )}
       </Card>
-      <Card>
+      <Divider />
+      <Card title="在线测试">
         <Form name="invoke" layout="vertical" onFinish={onFinish}>
           <Form.Item label="请求参数" name="userRequestParams">
             <Input.TextArea />
@@ -75,6 +99,10 @@ const Index: React.FC = () => {
             </Button>
           </Form.Item>
         </Form>
+      </Card>
+      <Divider />
+      <Card title="返回结果" loading={invokeLoading}>
+        {invokeRes}
       </Card>
     </PageContainer>
   );
