@@ -29,6 +29,7 @@ const CreateModel: React.FC<Props> = (props) => {
       <ProTable
         type="form"
         columns={columns}
+        // @ts-ignore
         formRef={formRef}
         onSubmit={async (values) => {
           await onSubmit(values);
